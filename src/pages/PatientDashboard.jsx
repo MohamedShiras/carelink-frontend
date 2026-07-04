@@ -1,18 +1,51 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 import { 
-  Activity, Calendar, Heart, FileText, Send, User, LogOut, 
-  AlertTriangle, ShieldCheck, Clock, UserCheck, Stethoscope 
+  Activity, Calendar, CheckCircle2, Circle, Clock, FileText, LogOut, 
+  AlertTriangle, ArrowRight, ShieldCheck, Stethoscope, Trash2, User 
 } from "lucide-react";
 
+const symptomOptions = [
+  { id: "high_fever", label: "High Fever" },
+  { id: "mild_fever", label: "Mild Fever" },
+  { id: "chills", label: "Chills" },
+  { id: "joint_pain", label: "Joint Pain" },
+  { id: "muscle_wasting", label: "Muscle Wasting" },
+  { id: "fatigue", label: "Fatigue" },
+  { id: "headache", label: "Headache" },
+  { id: "cough", label: "Cough" },
+  { id: "breathlessness", label: "Breathlessness" },
+  { id: "chest_pain", label: "Chest Pain" },
+  { id: "nausea", label: "Nausea" },
+  { id: "vomiting", label: "Vomiting" },
+  { id: "diarrhoea", label: "Diarrhoea" },
+  { id: "abdominal_pain", label: "Abdominal Pain" },
+  { id: "skin_rash", label: "Skin Rash" },
+  { id: "loss_of_appetite", label: "Loss of Appetite" },
+  { id: "dizziness", label: "Dizziness" },
+  { id: "sweating", label: "Sweating" },
+  { id: "weight_loss", label: "Weight Loss" },
+  { id: "anxiety", label: "Anxiety" },
+  { id: "weakness_in_limbs", label: "Weakness in Limbs" },
+  { id: "back_pain", label: "Back Pain" },
+  { id: "constipation", label: "Constipation" },
+  { id: "yellowish_skin", label: "Yellowish Skin" },
+  { id: "dark_urine", label: "Dark Urine" },
+  { id: "loss_of_balance", label: "Loss of Balance" },
+  { id: "blurred_and_distorted_vision", label: "Blurred or Distorted Vision" },
+  { id: "dehydration", label: "Dehydration" },
+  { id: "sore_throat", label: "Sore Throat" },
+  { id: "runny_nose", label: "Runny Nose" },
+  { id: "congestion", label: "Nasal Congestion" },
+];
+
 export default function PatientDashboard({ user, onLogout }) {
-  const [symptomsText, setSymptomsText] = useState("");
+  const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [triageResult, setTriageResult] = useState(null);
   const [loadingTriage, setLoadingTriage] = useState(false);
   
   const [doctors, setDoctors] = useState([]);
   const [recommendedSpec, setRecommendedSpec] = useState("");
-  const [loadingDoctors, setLoadingDoctors] = useState(false);
 
   // Appointment Form
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
@@ -58,19 +91,18 @@ export default function PatientDashboard({ user, onLogout }) {
 
   const handleTriageSubmit = async (e) => {
     e.preventDefault();
-    if (!symptomsText.trim()) return;
+    if (selectedSymptoms.length === 0) return;
 
     setLoadingTriage(true);
-    setLoadingDoctors(true);
     setTriageResult(null);
 
     try {
-      // 1. Assess Symptoms
-      const triageRes = await api.post("/triage/assess", { symptomsText });
-      setTriageResult(triageRes.data.data);
+      const triageRes = await api.post("/triage/diagnose", {
+        symptoms: selectedSymptoms,
+      });
+      setTriageResult(triageRes.data.data || triageRes.data);
 
-      // 2. Recommend Doctors based on symptoms
-      const docsRes = await api.get(`/triage/recommend-doctors?symptomsText=${encodeURIComponent(symptomsText)}`);
+      const docsRes = await api.get(`/triage/recommend-doctors?symptomsText=${encodeURIComponent(selectedSymptoms.join(", "))}`);
       setDoctors(docsRes.data.data || []);
       setRecommendedSpec(docsRes.data.recommendedSpecialization || "");
       
@@ -84,7 +116,6 @@ export default function PatientDashboard({ user, onLogout }) {
       console.error("Triage assessment failed", err);
     } finally {
       setLoadingTriage(false);
-      setLoadingDoctors(false);
     }
   };
 
@@ -157,28 +188,75 @@ export default function PatientDashboard({ user, onLogout }) {
           <section className="bg-slate-900/50 backdrop-blur-md p-6 rounded-2xl border border-slate-800 shadow-xl">
             <h2 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
               <Activity className="text-emerald-400 h-5 w-5" />
-              Symptom Entry & AI Triage
+              Symptom Selection & Disease Diagnosis
             </h2>
             <p className="text-slate-400 text-sm mb-4">
-              Type your current symptoms in detail. Our AI triage assistant will assess the severity and flag potential emergencies.
+              Select the symptoms that match your condition exactly. The diagnosis request uses the same symptom IDs as the training data.
             </p>
 
             <form onSubmit={handleTriageSubmit} className="space-y-4">
-              <textarea
-                value={symptomsText}
-                onChange={(e) => setSymptomsText(e.target.value)}
-                placeholder="Example: I have had a severe chest pain radiating to my left arm for the past hour, feeling sweaty and lightheaded..."
-                className="w-full h-28 px-4 py-3 bg-slate-950 border border-slate-850 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-200 placeholder-slate-500 text-sm transition"
-                required
-              />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {symptomOptions.map((symptom) => {
+                  const selected = selectedSymptoms.includes(symptom.id);
+
+                  return (
+                    <button
+                      key={symptom.id}
+                      type="button"
+                      onClick={() => {
+                        setTriageResult(null);
+                        setSelectedSymptoms((current) =>
+                          current.includes(symptom.id)
+                            ? current.filter((id) => id !== symptom.id)
+                            : [...current, symptom.id]
+                        );
+                      }}
+                      className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
+                        selected
+                          ? "border-emerald-500/50 bg-emerald-500/10 text-white"
+                          : "border-slate-800 bg-slate-950/70 text-slate-300 hover:border-slate-700 hover:bg-slate-900"
+                      }`}
+                    >
+                      <span className="text-sm font-medium">{symptom.label}</span>
+                      <span className={selected ? "text-emerald-400" : "text-slate-500"}>
+                        {selected ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSymptoms(symptomOptions.map((symptom) => symptom.id))}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-600 hover:bg-slate-900"
+                >
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSymptoms([]);
+                    setTriageResult(null);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-600 hover:bg-slate-900"
+                >
+                  <Trash2 className="h-4 w-4 text-rose-400" />
+                  Clear
+                </button>
+                <div className="text-xs text-slate-500">
+                  Selected: {selectedSymptoms.length} symptom{selectedSymptoms.length === 1 ? "" : "s"}
+                </div>
+              </div>
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  disabled={loadingTriage}
+                  disabled={loadingTriage || selectedSymptoms.length === 0}
                   className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-5 py-2.5 rounded-xl flex items-center gap-2 transition disabled:opacity-50"
                 >
-                  {loadingTriage ? "Analyzing..." : "Analyze Symptoms"}
-                  <Send className="h-4 w-4" />
+                  {loadingTriage ? "Analyzing..." : "Diagnose Disease"}
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             </form>
@@ -186,24 +264,27 @@ export default function PatientDashboard({ user, onLogout }) {
             {/* Triage Output */}
             {triageResult && (
               <div className={`mt-6 p-4 rounded-xl border ${
-                triageResult.triagePriority === 'Critical' 
+                (triageResult.triagePriority === 'Critical' || triageResult.severityScore >= 8)
                   ? 'bg-rose-500/10 border-rose-500/30 text-rose-200' 
-                  : triageResult.triagePriority === 'Moderate'
+                  : (triageResult.triagePriority === 'Moderate' || triageResult.severityScore >= 5)
                   ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
                   : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
               }`}>
                 <div className="flex items-start gap-3">
-                  {triageResult.triagePriority === 'Critical' ? (
+                  {triageResult.triagePriority === 'Critical' || triageResult.severityScore >= 8 ? (
                     <AlertTriangle className="h-6 w-6 text-rose-400 shrink-0 mt-0.5" />
                   ) : (
                     <ShieldCheck className="h-6 w-6 text-emerald-400 shrink-0 mt-0.5" />
                   )}
                   <div>
                     <h3 className="font-bold text-sm uppercase tracking-wider">
-                      AI Triage Result: {triageResult.triagePriority} (Score: {triageResult.severityScore}/10)
+                      Disease Diagnosis: {triageResult.predictedDisease || triageResult.disease || triageResult.prediction || triageResult.triagePriority || 'Unknown'}
                     </h3>
-                    <p className="text-sm mt-1 text-slate-300">{triageResult.aiRecommendation}</p>
-                    {triageResult.triagePriority === 'Critical' && (
+                    <p className="text-sm mt-1 text-slate-300">
+                      Severity Score: {triageResult.severityScore ?? '-'} / 10
+                    </p>
+                    <p className="text-sm mt-1 text-slate-300">{triageResult.aiRecommendation || triageResult.recommendation || triageResult.message || "Diagnosis completed."}</p>
+                    {(triageResult.triagePriority === 'Critical' || triageResult.severityScore >= 8) && (
                       <p className="text-xs mt-2 text-rose-400 font-semibold">
                         ⚠️ EMERGENCY DETECTED: Please seek immediate emergency medical care or call 911/199.
                       </p>
