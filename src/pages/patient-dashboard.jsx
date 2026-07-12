@@ -84,6 +84,137 @@ const records = [
     { name: "Cardiology Report",    date: "01 June 2025", detail: "ECG and echocardiogram findings — all within normal range.", tag: "Specialist" },
 ];
 
+const diseaseProfiles = [
+    {
+        disease: "Viral Upper Respiratory Infection",
+        confidence: 82,
+        recordLabel: "Respiratory disease record",
+        recordType: "Infectious disease",
+        commonSymptoms: ["cough", "runny nose", "sore throat", "fever"],
+        precautions: ["Rest", "Hydration", "Symptom monitoring"],
+        keywords: ["cough", "runny nose", "sneezing", "sore throat", "congestion", "fever", "body ache"],
+        summary: "Your symptoms most closely match a viral upper respiratory infection, which commonly causes cough, congestion, sore throat, and low-grade fever.",
+        careAdvice: ["Rest and drink fluids", "Use fever medicine only if approved by your clinician", "Monitor symptoms for 48 to 72 hours"],
+        redFlags: ["Breathing difficulty", "Chest pain", "Symptoms worsening after 3 days"],
+    },
+    {
+        disease: "Gastroenteritis",
+        confidence: 80,
+        recordLabel: "Digestive disease record",
+        recordType: "Gastrointestinal disease",
+        commonSymptoms: ["vomiting", "diarrhea", "nausea", "stomach pain"],
+        precautions: ["Hydration", "Bland diet", "Avoid oily foods"],
+        keywords: ["vomiting", "diarrhea", "nausea", "stomach pain", "abdominal cramps", "food poisoning"],
+        summary: "The pattern suggests gastroenteritis, often seen with nausea, vomiting, diarrhea, and stomach cramping.",
+        careAdvice: ["Stay hydrated with small frequent sips", "Eat bland foods if tolerated", "Avoid oily or heavy meals for now"],
+        redFlags: ["Blood in stool", "Unable to keep fluids down", "Signs of dehydration"],
+    },
+    {
+        disease: "Migraine-Type Headache",
+        confidence: 78,
+        recordLabel: "Neurological disease record",
+        recordType: "Neurology",
+        commonSymptoms: ["headache", "nausea", "light sensitivity", "vision changes"],
+        precautions: ["Dark room rest", "Trigger tracking", "Prescribed pain relief"],
+        keywords: ["headache", "light sensitive", "nausea", "throbbing", "one side", "vision", "aura"],
+        summary: "The symptom combination is consistent with a migraine-type headache, especially when headache is paired with light sensitivity or nausea.",
+        careAdvice: ["Rest in a quiet dark room", "Track triggers like skipped meals or stress", "Take prescribed pain relief as directed"],
+        redFlags: ["Sudden worst headache", "Weakness or confusion", "Headache with fever and stiff neck"],
+    },
+    {
+        disease: "Urinary Tract Infection",
+        confidence: 81,
+        recordLabel: "Urinary disease record",
+        recordType: "Renal and urinary",
+        commonSymptoms: ["burning urination", "frequent urination", "pelvic pain", "cloudy urine"],
+        precautions: ["Water intake", "Urine testing", "Prompt follow-up"],
+        keywords: ["burning urination", "frequent urination", "urgent urination", "cloudy urine", "pelvic pain", "lower abdominal pain"],
+        summary: "The symptom pattern is compatible with a urinary tract infection, particularly if burning, urgency, or lower abdominal discomfort is present.",
+        careAdvice: ["Increase water intake", "Avoid holding urine for long periods", "Follow up for urine testing if symptoms persist"],
+        redFlags: ["Fever or chills", "Back pain", "Vomiting or worsening pain"],
+    },
+    {
+        disease: "Asthma or Bronchospasm",
+        confidence: 77,
+        recordLabel: "Respiratory disease record",
+        recordType: "Pulmonary",
+        commonSymptoms: ["wheezing", "shortness of breath", "tight chest", "night cough"],
+        precautions: ["Reliever inhaler", "Avoid triggers", "Monitor attacks"],
+        keywords: ["wheezing", "shortness of breath", "tight chest", "breathless", "coughing at night"],
+        summary: "This looks like an asthma or bronchospasm pattern, especially when wheeze, chest tightness, or shortness of breath is described.",
+        careAdvice: ["Use your reliever inhaler if prescribed", "Avoid smoke, dust, and cold air triggers", "Track how often symptoms return"],
+        redFlags: ["Trouble speaking full sentences", "Blue lips", "Symptoms not improving after inhaler"],
+    },
+    {
+        disease: "Diabetes-Related Hyperglycemia",
+        confidence: 76,
+        recordLabel: "Metabolic disease record",
+        recordType: "Endocrine",
+        commonSymptoms: ["thirst", "frequent urination", "blurred vision", "fatigue"],
+        precautions: ["Glucose check", "Hydration", "Follow diabetes plan"],
+        keywords: ["thirst", "frequent urination", "blurred vision", "fatigue", "high sugar", "glucose"],
+        summary: "The symptoms may align with elevated blood sugar, which can cause thirst, fatigue, and frequent urination.",
+        careAdvice: ["Check glucose if you have a monitor", "Keep hydrated", "Follow your prescribed diabetes plan closely"],
+        redFlags: ["Confusion", "Vomiting", "Very high glucose readings"],
+    },
+];
+
+const emergencyClues = ["chest pain", "trouble breathing", "shortness of breath", "blue lips", "fainting", "confusion", "severe pain"];
+
+const tokenizeSymptoms = (text) => text.toLowerCase();
+
+const buildPrediction = (text) => {
+    const normalized = tokenizeSymptoms(text);
+    const matches = diseaseProfiles
+        .map((profile) => {
+            const matchedSymptoms = profile.keywords.filter((keyword) => normalized.includes(keyword));
+            return {
+                ...profile,
+                matchedSymptoms,
+                score: matchedSymptoms.length,
+            };
+        })
+        .filter((profile) => profile.score > 0)
+        .sort((a, b) => b.score - a.score || b.confidence - a.confidence);
+
+    const bestMatch = matches[0];
+    const urgentMatch = emergencyClues.filter((clue) => normalized.includes(clue));
+
+    if (!bestMatch) {
+        return {
+            condition: "Needs more symptom detail",
+            confidence: 0,
+            matchLabel: "No valid match",
+            summary: "The symptoms do not strongly match any trained disease record yet. Please select a valid disease or enter clearer symptoms such as fever, cough, pain location, urination changes, or breathing issues.",
+            matchedSymptoms: [],
+            careAdvice: ["Describe where the symptom is located", "Include how long it has lasted", "Mention any fever, cough, pain, or breathing changes"],
+            redFlags: urgentMatch.length ? ["Your message includes urgent warning signs. Seek immediate care if symptoms are severe."] : ["Please select a valid disease from the trained disease list."],
+            alternatives: matches.slice(0, 3),
+            severity: urgentMatch.length ? "High" : "Moderate",
+            diseaseOptions: diseaseProfiles.map((profile) => profile.disease),
+        };
+    }
+
+    return {
+        condition: bestMatch.disease,
+        confidence: bestMatch.confidence,
+        matchLabel: `${bestMatch.confidence}% match`,
+        summary: bestMatch.summary,
+        matchedSymptoms: bestMatch.matchedSymptoms,
+        careAdvice: bestMatch.careAdvice,
+        redFlags: [...bestMatch.redFlags, ...(urgentMatch.length ? ["Urgent warning signs were mentioned. Please seek medical help now if these are happening."] : [])],
+        alternatives: matches.slice(1, 4),
+        severity: urgentMatch.length ? "High" : bestMatch.confidence >= 80 ? "Moderate" : "Low",
+        diseaseOptions: diseaseProfiles.map((profile) => profile.disease),
+        record: {
+            label: bestMatch.recordLabel,
+            type: bestMatch.recordType,
+            symptoms: bestMatch.commonSymptoms,
+            precautions: bestMatch.precautions,
+        },
+    };
+};
+
 /* ─── Styles ──────────────────────────────────────────────────────────── */
 
 const css = `
@@ -878,6 +1009,198 @@ const css = `
     width: fit-content;
 }
 
+.ai-pred-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.ai-pred-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+.ai-pred-label {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: #059669;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.ai-pred-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #022c22;
+    line-height: 1.4;
+}
+.ai-pred-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.ai-pred-badge.self_care {
+    background: rgba(16,185,129,0.1);
+    color: #059669;
+    border-color: rgba(16,185,129,0.15);
+}
+.ai-pred-badge.doctor_recommended {
+    background: rgba(59,130,246,0.1);
+    color: #2563eb;
+    border-color: rgba(59,130,246,0.15);
+}
+.ai-pred-badge.doctor_required {
+    background: rgba(245,158,11,0.1);
+    color: #b45309;
+    border-color: rgba(245,158,11,0.15);
+}
+.ai-pred-badge.emergency {
+    background: rgba(239,68,68,0.1);
+    color: #dc2626;
+    border-color: rgba(239,68,68,0.15);
+}
+.ai-pred-badge.no-match {
+    background: rgba(107,114,128,0.1);
+    color: #4b5563;
+    border-color: rgba(107,114,128,0.16);
+}
+.ai-pred-summary {
+    font-size: 12.8px;
+    line-height: 1.7;
+    color: #065f46;
+}
+.ai-pred-record {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 13px;
+    border-radius: 16px;
+    background: rgba(236,253,245,0.75);
+    border: 1px solid rgba(16,185,129,0.14);
+}
+.ai-pred-record-head {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #059669;
+    font-weight: 700;
+}
+.ai-pred-record-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ai-pred-record-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #059669;
+    font-weight: 700;
+}
+.ai-pred-record-value {
+    font-size: 12.5px;
+    color: #022c22;
+    font-weight: 600;
+    margin-top: 4px;
+}
+.ai-pred-record-subtitle {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #059669;
+    font-weight: 700;
+}
+.ai-pred-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.ai-pred-section-title,
+.ai-pred-box-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #059669;
+    font-weight: 700;
+}
+.ai-pred-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.ai-pred-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.14);
+    color: #065f46;
+    font-size: 11px;
+    font-weight: 600;
+}
+.ai-pred-grid {
+    display: grid;
+    gap: 10px;
+}
+@media (min-width: 560px) {
+    .ai-pred-grid { grid-template-columns: 1fr 1fr; }
+}
+.ai-pred-box {
+    background: rgba(236,253,245,0.7);
+    border: 1px solid rgba(16,185,129,0.12);
+    border-radius: 16px;
+    padding: 12px 13px;
+}
+.ai-pred-box.warning {
+    background: rgba(254,242,242,0.75);
+    border-color: rgba(239,68,68,0.12);
+}
+.ai-pred-box.warning .ai-pred-box-title { color: #dc2626; }
+.ai-pred-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    color: #065f46;
+    font-size: 12px;
+    line-height: 1.6;
+}
+.ai-pred-box.warning .ai-pred-list { color: #7f1d1d; }
+.ai-pred-alt {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: #065f46;
+    padding-top: 2px;
+}
+.ai-pred-alt-label {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #059669;
+    font-weight: 700;
+}
+.ai-pred-alt-value {
+    color: #065f46;
+}
+@media (max-width: 520px) {
+    .ai-pred-top {
+        flex-direction: column;
+    }
+    .ai-pred-badge {
+        align-self: flex-start;
+    }
+    .ai-pred-record-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .ai-typing { display: flex; align-items: center; gap: 5px; padding: 4px 2px; }
 .ai-typing span {
     width: 7px; height: 7px; border-radius: 50%;
@@ -977,10 +1300,40 @@ export default function PatientDashboard() {
         setAiMessages((prev) => [...prev, userMsg]);
         setAiSymptoms("");
         setAiLoading(true);
-        // Simulate ML API call — wire up real endpoint here in future
-        await new Promise((r) => setTimeout(r, 1800));
-        setAiLoading(false);
-        setAiMessages((prev) => [...prev, { role: "ai", type: "coming-soon" }]);
+        
+        try {
+            const symptomsList = text.split(/[\n,;]/).map(s => s.trim()).filter(Boolean);
+            const requestSymptoms = symptomsList.length > 0 ? symptomsList : [text];
+            
+            const res = await fetch("http://127.0.0.1:5001/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ symptoms: requestSymptoms })
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                const prediction = {
+                    condition: data.predicted_disease,
+                    confidence: data.confidence,
+                    matchLabel: data.severity_label,
+                    summary: data.recommendation,
+                    matchedSymptoms: data.matched_symptoms || [],
+                    careAdvice: [data.recommendation, `Suggested specialist: ${data.specialty}`],
+                    redFlags: data.urgency_level === 'emergency' ? ["Seek immediate emergency care!"] : ["Worsening of current symptoms", "Development of new severe symptoms", "If symptoms do not improve as expected"],
+                    severity: data.urgency_level,
+                    alternatives: [],
+                    diseaseOptions: []
+                };
+                setAiMessages((prev) => [...prev, { role: "ai", type: "prediction", prediction }]);
+            } else {
+                setAiMessages((prev) => [...prev, { role: "ai", text: "Sorry, I couldn't process that. Please try again." }]);
+            }
+        } catch(e) {
+            setAiMessages((prev) => [...prev, { role: "ai", text: "Sorry, the prediction service is currently unavailable." }]);
+        } finally {
+            setAiLoading(false);
+        }
     };
 
     return (
@@ -1442,16 +1795,93 @@ export default function PatientDashboard() {
                                                 : <Brain size={14} />}
                                         </div>
                                         <div className="ai-msg-bubble">
-                                            {msg.role === "ai" && msg.type === "coming-soon" ? (
-                                                <div className="ai-coming-card">
-                                                    <div className="ai-coming-card-title">🧠 ML Model Coming Soon</div>
-                                                    <div className="ai-coming-card-body">
-                                                        Your symptoms have been logged. The AI prediction engine is under development — predictions will be available in a future release.
+                                            {msg.role === "ai" && msg.type === "prediction" ? (
+                                                <div className="ai-pred-card">
+                                                    <div className="ai-pred-top">
+                                                        <div>
+                                                            <div className="ai-pred-label">Trained disease model</div>
+                                                            <div className="ai-pred-title">Likely condition: {msg.prediction.condition}</div>
+                                                        </div>
+                                                        <div className={`ai-pred-badge ${msg.prediction.severity.toLowerCase()}`}>
+                                                            {msg.prediction.matchLabel}
+                                                        </div>
                                                     </div>
-                                                    <div className="ai-coming-tag">
-                                                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
-                                                        Future Development
+
+                                                    <div className="ai-pred-summary">{msg.prediction.summary}</div>
+
+                                                    {msg.prediction.record && (
+                                                        <div className="ai-pred-record">
+                                                            <div className="ai-pred-record-head">Disease record</div>
+                                                            <div className="ai-pred-record-grid">
+                                                                <div>
+                                                                    <div className="ai-pred-record-label">Record type</div>
+                                                                    <div className="ai-pred-record-value">{msg.prediction.record.type}</div>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="ai-pred-record-label">Record label</div>
+                                                                    <div className="ai-pred-record-value">{msg.prediction.record.label}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="ai-pred-record-subtitle">Common symptoms</div>
+                                                            <div className="ai-pred-chip-row">
+                                                                {msg.prediction.record.symptoms.map((item) => (
+                                                                    <span className="ai-pred-chip" key={item}>{item}</span>
+                                                                ))}
+                                                            </div>
+                                                            <div className="ai-pred-record-subtitle">Precautions</div>
+                                                            <div className="ai-pred-chip-row">
+                                                                {msg.prediction.record.precautions.map((item) => (
+                                                                    <span className="ai-pred-chip" key={item}>{item}</span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {!!msg.prediction.matchedSymptoms.length && (
+                                                        <div className="ai-pred-section">
+                                                            <div className="ai-pred-section-title">Matched symptoms</div>
+                                                            <div className="ai-pred-chip-row">
+                                                                {msg.prediction.matchedSymptoms.map((symptom) => (
+                                                                    <span className="ai-pred-chip" key={symptom}>{symptom}</span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="ai-pred-grid">
+                                                        <div className="ai-pred-box">
+                                                            <div className="ai-pred-box-title">Next steps</div>
+                                                            <ul className="ai-pred-list">
+                                                                {msg.prediction.careAdvice.map((item) => (
+                                                                    <li key={item}>{item}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                        <div className="ai-pred-box warning">
+                                                            <div className="ai-pred-box-title">Watch for</div>
+                                                            <ul className="ai-pred-list">
+                                                                {msg.prediction.redFlags.map((item) => (
+                                                                    <li key={item}>{item}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
                                                     </div>
+
+                                                    {!!msg.prediction.alternatives.length && (
+                                                        <div className="ai-pred-alt">
+                                                            <span className="ai-pred-alt-label">Other possibilities:</span>
+                                                            <span className="ai-pred-alt-value">
+                                                                {msg.prediction.alternatives.map((item) => `${item.disease} (${item.score})`).join(" · ")}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {!msg.prediction.record && !!msg.prediction.diseaseOptions?.length && (
+                                                        <div className="ai-pred-alt">
+                                                            <span className="ai-pred-alt-label">Valid disease options:</span>
+                                                            <span className="ai-pred-alt-value">{msg.prediction.diseaseOptions.join(" · ")}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ) : msg.text}
                                         </div>
@@ -1532,4 +1962,4 @@ export default function PatientDashboard() {
             </div>
         </>
     );
-}
+}
