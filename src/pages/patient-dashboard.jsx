@@ -22,6 +22,12 @@ import {
     ChevronRight,
     Download,
     Phone,
+    Brain,
+    Sparkles,
+    X,
+    ChevronDown,
+    Send,
+    Loader2,
 } from "lucide-react";
 
 /* ─── Data ────────────────────────────────────────────────────────────── */
@@ -440,7 +446,7 @@ const css = `
 .pd-update-content { flex: 1; }
 .pd-update-title { font-size: 13.5px; font-weight: 600; color: #022c22; }
 .pd-update-detail { font-size: 12.5px; color: #065f46; line-height: 1.6; margin-top: 3px; }
-.pd-update-time { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.18em; color: #6ee7b7; margin-top: 5px; font-weight: 600; }
+.pd-update-time { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.18em; color: #059669; margin-top: 5px; font-weight: 600; }
 
 /* ── Medications tab ── */
 .pd-med-list { display: flex; flex-direction: column; gap: 12px; }
@@ -614,9 +620,9 @@ const css = `
     font-size: 16px; font-weight: 700; color: #fff;
     flex-shrink: 0;
 }
-.pd-team-role { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.18em; color: #6ee7b7; font-weight: 600; }
+.pd-team-role { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.18em; color: #059669; font-weight: 600; }
 .pd-team-name { font-size: 13.5px; font-weight: 600; color: #022c22; margin-top: 1px; }
-.pd-team-chevron { margin-left: auto; color: #a7f3d0; }
+.pd-team-chevron { margin-left: auto; color: #34d399; }
 
 /* Care plan */
 .pd-plan-list { display: flex; flex-direction: column; gap: 10px; }
@@ -636,7 +642,7 @@ const css = `
     display: flex; align-items: center; justify-content: center;
 }
 .pd-plan-check.done { background: rgba(16,185,129,0.15); color: #059669; }
-.pd-plan-check.todo { background: rgba(16,185,129,0.07); color: #a7f3d0; }
+.pd-plan-check.todo { background: rgba(16,185,129,0.1); color: #34d399; }
 .pd-plan-text { font-size: 13px; color: #065f46; line-height: 1.5; }
 .pd-plan-text.done { color: #059669; }
 
@@ -681,17 +687,300 @@ const css = `
 
 /* Divider */
 .pd-divider { height: 1px; background: rgba(16,185,129,0.12); margin: 4px 0; }
+
+/* ── AI Symptom Chat Bar ── */
+
+.ai-bar-anchor {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+}
+
+.ai-chat-container {
+    pointer-events: all;
+    width: 100%;
+    max-width: 760px;
+    padding: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* ── Collapsed bar (before first message) ── */
+.ai-collapsed-bar {
+    background: rgba(255,255,255,0.92);
+    border: 1.5px solid rgba(16,185,129,0.25);
+    border-radius: 20px;
+    box-shadow:
+        0 0 0 1px rgba(16,185,129,0.07),
+        0 8px 32px rgba(16,185,129,0.14),
+        0 2px 8px rgba(0,0,0,0.06);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px 10px 16px;
+    animation: aiBarIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes aiBarIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.ai-bar-brain {
+    width: 36px; height: 36px; border-radius: 11px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(16,185,129,0.3);
+}
+
+.ai-bar-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: #022c22;
+    outline: none;
+    min-width: 0;
+}
+.ai-bar-input::placeholder { color: #9ca3af; }
+
+.ai-bar-send {
+    width: 38px; height: 38px; border-radius: 12px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; cursor: pointer; flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(16,185,129,0.35);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.ai-bar-send:not(:disabled):hover { transform: scale(1.08); box-shadow: 0 6px 18px rgba(16,185,129,0.45); }
+.ai-bar-send:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Expanded chat panel (after first message) ── */
+.ai-chat-panel {
+    background: rgba(255,255,255,0.95);
+    border: 1.5px solid rgba(16,185,129,0.2);
+    border-radius: 24px 24px 0 0;
+    box-shadow:
+        0 0 0 1px rgba(16,185,129,0.06),
+        0 -8px 40px rgba(16,185,129,0.12),
+        0 -2px 12px rgba(0,0,0,0.05);
+    backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: aiPanelUp 0.38s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes aiPanelUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.ai-chat-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(16,185,129,0.1);
+    background: linear-gradient(135deg, rgba(209,250,229,0.5), rgba(255,255,255,0.3));
+    flex-shrink: 0;
+}
+.ai-chat-head-icon {
+    width: 36px; height: 36px; border-radius: 11px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; flex-shrink: 0;
+    box-shadow: 0 3px 10px rgba(16,185,129,0.28);
+}
+.ai-chat-head-titles { flex: 1; }
+.ai-chat-head-sup { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.22em; color: #059669; font-weight: 700; }
+.ai-chat-head-title { font-size: 13.5px; font-weight: 700; color: #022c22; letter-spacing: -0.2px; }
+.ai-chat-head-close {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.12);
+    display: flex; align-items: center; justify-content: center;
+    color: #059669; cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+.ai-chat-head-close:hover { background: rgba(16,185,129,0.16); }
+
+.ai-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: 320px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(16,185,129,0.2) transparent;
+}
+.ai-chat-messages::-webkit-scrollbar { width: 4px; }
+.ai-chat-messages::-webkit-scrollbar-thumb { background: rgba(16,185,129,0.2); border-radius: 4px; }
+
+.ai-msg {
+    display: flex;
+    gap: 10px;
+    animation: aiMsgIn 0.28s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes aiMsgIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.ai-msg.user { flex-direction: row-reverse; }
+
+.ai-msg-avatar {
+    width: 30px; height: 30px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.ai-msg.user .ai-msg-avatar { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+.ai-msg.ai .ai-msg-avatar { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.15); color: #059669; }
+
+.ai-msg-bubble {
+    max-width: 78%;
+    border-radius: 16px;
+    padding: 11px 15px;
+    font-size: 13.5px;
+    line-height: 1.65;
+}
+.ai-msg.user .ai-msg-bubble {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    border-radius: 16px 4px 16px 16px;
+}
+.ai-msg.ai .ai-msg-bubble {
+    background: rgba(236,253,245,0.8);
+    border: 1px solid rgba(16,185,129,0.12);
+    color: #065f46;
+    border-radius: 4px 16px 16px 16px;
+}
+
+.ai-coming-card { display: flex; flex-direction: column; gap: 8px; }
+.ai-coming-card-title { font-size: 13px; font-weight: 700; color: #022c22; }
+.ai-coming-card-body  { font-size: 12.5px; line-height: 1.6; color: #065f46; }
+.ai-coming-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(16,185,129,0.12);
+    border: 1px solid rgba(16,185,129,0.18);
+    border-radius: 100px;
+    padding: 3px 10px;
+    font-size: 10.5px; font-weight: 600; color: #059669;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    width: fit-content;
+}
+
+.ai-typing { display: flex; align-items: center; gap: 5px; padding: 4px 2px; }
+.ai-typing span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #10b981; display: inline-block;
+    animation: aiTypeBounce 1.2s ease-in-out infinite;
+}
+.ai-typing span:nth-child(2) { animation-delay: 0.18s; }
+.ai-typing span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes aiTypeBounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40%            { transform: translateY(-6px); opacity: 1; }
+}
+
+.ai-chat-input-row {
+    border-top: 1px solid rgba(16,185,129,0.1);
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.ai-chat-textarea {
+    width: 100%;
+    min-height: 80px;
+    max-height: 180px;
+    resize: none;
+    border: 1.5px solid rgba(16,185,129,0.2);
+    border-radius: 16px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    font-family: 'Inter', sans-serif;
+    color: #022c22;
+    line-height: 1.65;
+    background: rgba(236,253,245,0.45);
+    outline: none;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.ai-chat-textarea::placeholder { color: #9ca3af; }
+.ai-chat-textarea:focus {
+    border-color: #10b981;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
+}
+.ai-chat-input-footer {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.ai-chat-char { font-size: 11px; color: #059669; font-weight: 500; }
+.ai-chat-send-btn {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none; border-radius: 12px;
+    color: #fff; font-size: 13.5px; font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(16,185,129,0.32);
+    transition: transform 0.2s, box-shadow 0.2s;
+    flex-shrink: 0;
+}
+.ai-chat-send-btn:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(16,185,129,0.42); }
+.ai-chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ai-chat-send-shine {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.45s ease;
+}
+.ai-chat-send-btn:not(:disabled):hover .ai-chat-send-shine { transform: translateX(100%); }
+
+.ai-spin { animation: aiSpin 0.8s linear infinite; }
+@keyframes aiSpin { to { transform: rotate(360deg); } }
 `;
 
 /* ─── Component ───────────────────────────────────────────────────────── */
+
 
 export default function PatientDashboard() {
     const navigate     = useNavigate();
     const [activeTab, setActiveTab] = useState("overview");
 
+    // AI Symptom Chat state
+    const [aiMessages, setAiMessages] = useState([]);
+    const [aiSymptoms, setAiSymptoms] = useState("");
+    const [aiLoading,  setAiLoading]  = useState(false);
+
     const handleLogout = () => {
         localStorage.removeItem("token");
         navigate("/login");
+    };
+
+    const handleAiAnalyze = async () => {
+        const text = aiSymptoms.trim();
+        if (!text || aiLoading) return;
+        const userMsg = { role: "user", text };
+        setAiMessages((prev) => [...prev, userMsg]);
+        setAiSymptoms("");
+        setAiLoading(true);
+        // Simulate ML API call — wire up real endpoint here in future
+        await new Promise((r) => setTimeout(r, 1800));
+        setAiLoading(false);
+        setAiMessages((prev) => [...prev, { role: "ai", type: "coming-soon" }]);
     };
 
     return (
@@ -1115,6 +1404,132 @@ export default function PatientDashboard() {
                     </div>
                 </div>
             </div>
+
+
+            {/* ── AI Symptom Chat Bar (bottom-center) ── */}
+            <div className="ai-bar-anchor">
+                <div className="ai-chat-container">
+
+                    {/* ── EXPANDED panel: appears after first message ── */}
+                    {aiMessages.length > 0 && (
+                        <div className="ai-chat-panel">
+
+                            {/* Header */}
+                            <div className="ai-chat-head">
+                                <div className="ai-chat-head-icon">
+                                    <Brain size={18} />
+                                </div>
+                                <div className="ai-chat-head-titles">
+                                    <div className="ai-chat-head-sup">AI-Powered · CareLink</div>
+                                    <div className="ai-chat-head-title">Symptom &amp; Disease Predictor</div>
+                                </div>
+                                <button
+                                    className="ai-chat-head-close"
+                                    onClick={() => { setAiMessages([]); setAiSymptoms(""); setAiLoading(false); }}
+                                    aria-label="Close AI chat"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+
+                            {/* Message scroll area */}
+                            <div className="ai-chat-messages" id="ai-chat-messages">
+                                {aiMessages.map((msg, i) => (
+                                    <div className={`ai-msg ${msg.role}`} key={i}>
+                                        <div className="ai-msg-avatar">
+                                            {msg.role === "user"
+                                                ? <UserRound size={14} />
+                                                : <Brain size={14} />}
+                                        </div>
+                                        <div className="ai-msg-bubble">
+                                            {msg.role === "ai" && msg.type === "coming-soon" ? (
+                                                <div className="ai-coming-card">
+                                                    <div className="ai-coming-card-title">🧠 ML Model Coming Soon</div>
+                                                    <div className="ai-coming-card-body">
+                                                        Your symptoms have been logged. The AI prediction engine is under development — predictions will be available in a future release.
+                                                    </div>
+                                                    <div className="ai-coming-tag">
+                                                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+                                                        Future Development
+                                                    </div>
+                                                </div>
+                                            ) : msg.text}
+                                        </div>
+                                    </div>
+                                ))}
+                                {aiLoading && (
+                                    <div className="ai-msg ai">
+                                        <div className="ai-msg-avatar"><Brain size={14} /></div>
+                                        <div className="ai-msg-bubble">
+                                            <div className="ai-typing">
+                                                <span /><span /><span />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Expanded textarea input (bigger, after first prompt) */}
+                            <div className="ai-chat-input-row">
+                                <textarea
+                                    id="ai-symptom-input"
+                                    className="ai-chat-textarea"
+                                    placeholder="Describe more symptoms or ask a follow-up question…"
+                                    value={aiSymptoms}
+                                    onChange={(e) => setAiSymptoms(e.target.value.slice(0, 600))}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleAiAnalyze();
+                                        }
+                                    }}
+                                />
+                                <div className="ai-chat-input-footer">
+                                    <span className="ai-chat-char">{aiSymptoms.length}/600 · Shift+Enter for new line</span>
+                                    <button
+                                        className="ai-chat-send-btn"
+                                        id="ai-analyze-btn"
+                                        onClick={handleAiAnalyze}
+                                        disabled={aiLoading || aiSymptoms.trim().length < 5}
+                                    >
+                                        <span className="ai-chat-send-shine" />
+                                        {aiLoading
+                                            ? <><Loader2 size={14} className="ai-spin" /><span>Analysing…</span></>
+                                            : <><Sparkles size={13} /><span>Send</span><Send size={13} /></>}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── COLLAPSED bar: compact single-line input before first message ── */}
+                    {aiMessages.length === 0 && (
+                        <div className="ai-collapsed-bar">
+                            <div className="ai-bar-brain"><Brain size={18} /></div>
+                            <input
+                                id="ai-symptom-fab-input"
+                                className="ai-bar-input"
+                                placeholder="Describe your symptoms for AI disease prediction…"
+                                value={aiSymptoms}
+                                onChange={(e) => setAiSymptoms(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && aiSymptoms.trim().length >= 5) handleAiAnalyze();
+                                }}
+                            />
+                            <button
+                                className="ai-bar-send"
+                                id="ai-symptom-fab"
+                                onClick={handleAiAnalyze}
+                                disabled={aiSymptoms.trim().length < 5}
+                                aria-label="Send symptoms for AI analysis"
+                            >
+                                {aiLoading ? <Loader2 size={16} className="ai-spin" /> : <Send size={16} />}
+                            </button>
+                        </div>
+                    )}
+
+                </div>
+            </div>
         </>
     );
-}
+}
