@@ -5,19 +5,19 @@ import { Mail, Lock, Eye, EyeOff, Activity, AlertCircle, ArrowRight, HeartPulse,
 
 const features = [
     { icon: HeartPulse, label: "Real-time health monitoring" },
-    { icon: Shield,     label: "Secure & private records" },
-    { icon: Users,      label: "Connected care team" },
+    { icon: Shield, label: "Secure & private records" },
+    { icon: Users, label: "Connected care team" },
 ];
 
 export default function Login() {
     const navigate = useNavigate();
-    const [email, setEmail]               = useState("");
-    const [password, setPassword]         = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [rememberMe, setRememberMe]     = useState(false);
-    const [loading, setLoading]           = useState(false);
-    const [error, setError]               = useState("");
-    const [focused, setFocused]           = useState("");
+    const [rememberMe, setRememberMe] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [focused, setFocused] = useState("");
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -291,7 +291,7 @@ export default function Login() {
                     outline: none;
                     transition: all 0.25s ease;
                 }
-                .field-input::placeholder { color: #a7f3d0; }
+                .field-input::placeholder { color: #9ca3af; }
                 .field-input:hover {
                     border-color: rgba(16,185,129,0.35);
                     background: rgba(236,253,245,0.8);
@@ -539,7 +539,7 @@ export default function Login() {
                                     >
                                         {showPassword
                                             ? <EyeOff size={17} />
-                                            : <Eye     size={17} />}
+                                            : <Eye size={17} />}
                                     </button>
                                 </div>
                             </div>
