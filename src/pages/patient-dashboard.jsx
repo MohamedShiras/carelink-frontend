@@ -1293,6 +1293,48 @@ export default function PatientDashboard() {
         navigate("/login");
     };
 
+    const getConversationalResponse = (text) => {
+        const lower = text.toLowerCase().replace(/[^a-z\s]/g, "").trim();
+
+        // Greeting patterns
+        if (/^(hi|hello|hey|hii+|helo|greetings|good\s*(morning|afternoon|evening|night)|yo|sup|whats\s*up)$/i.test(lower) ||
+            /^(hi|hello|hey)\s+(there|doc|doctor|assistant|bot|ai)$/i.test(lower)) {
+            return "Hello! 👋 I'm your CareLink health assistant. How are you feeling today? If you have any symptoms, feel free to describe them and I'll help analyze them for you.";
+        }
+
+        // "How are you" patterns
+        if (/how\s*(are|r)\s*(you|u|ya)|how\s*do\s*you\s*do|how\s*is\s*it\s*going|hows\s*it\s*going|how\s*you\s*doing/.test(lower)) {
+            return "I'm doing great, thank you for asking! 😊 How about your health? Is there anything bothering you today? Feel free to share any symptoms you're experiencing.";
+        }
+
+        // "What are you" / "Who are you" patterns
+        if (/who\s*(are|r)\s*(you|u)|what\s*(are|r)\s*(you|u)|what\s*can\s*you\s*do|what\s*do\s*you\s*do|tell\s*me\s*about\s*(yourself|you)/.test(lower)) {
+            return "I'm CareLink's AI-powered Symptom & Disease Predictor 🤖. I can analyze your symptoms, predict possible conditions, and suggest when you should see a specialist. Just describe what you're feeling!";
+        }
+
+        // Thank you patterns
+        if (/^(thanks|thank\s*you|thx|ty|thank\s*u|much\s*appreciated|appreciate\s*it)/.test(lower)) {
+            return "You're welcome! 😊 Take care of your health. If you have any more symptoms or concerns, don't hesitate to ask. Stay healthy! 💚";
+        }
+
+        // Goodbye patterns
+        if (/^(bye|goodbye|good\s*bye|see\s*you|see\s*ya|take\s*care|gotta\s*go|ttyl|later)/.test(lower)) {
+            return "Goodbye! Take care of yourself! 💚 Remember, I'm always here whenever you need health guidance. Stay healthy!";
+        }
+
+        // Help patterns
+        if (/^(help|how\s*to\s*use|what\s*should\s*i\s*(do|type|say)|how\s*does\s*this\s*work|instructions)/.test(lower)) {
+            return "Here's how I can help you:\n\n• **Describe your symptoms** — e.g., \"headache, fever, nausea\"\n• I'll analyze them and predict possible conditions\n• I'll suggest urgency levels and specialists\n\nYou can type multiple symptoms separated by commas. The more detail you provide, the better my analysis will be!";
+        }
+
+        // "I'm fine" / "I'm good" patterns
+        if (/^(i\s*am|im)\s*(fine|good|great|okay|ok|well|alright|doing\s*(good|well|great|fine))/.test(lower)) {
+            return "That's wonderful to hear! 😊 Glad you're doing well. If you ever feel unwell or notice any symptoms, I'm right here to help. Stay healthy! 💚";
+        }
+
+        return null; // Not a conversational message — proceed to ML prediction
+    };
+
     const handleAiAnalyze = async () => {
         const text = aiSymptoms.trim();
         if (!text || aiLoading) return;
@@ -1300,6 +1342,14 @@ export default function PatientDashboard() {
         setAiMessages((prev) => [...prev, userMsg]);
         setAiSymptoms("");
         setAiLoading(true);
+
+        // Check for conversational messages first
+        const conversationalReply = getConversationalResponse(text);
+        if (conversationalReply) {
+            setAiMessages((prev) => [...prev, { role: "ai", text: conversationalReply }]);
+            setAiLoading(false);
+            return;
+        }
         
         try {
             const symptomsList = text.split(/[\n,;]/).map(s => s.trim()).filter(Boolean);
@@ -1322,7 +1372,7 @@ export default function PatientDashboard() {
                     careAdvice: [data.recommendation, `Suggested specialist: ${data.specialty}`],
                     redFlags: data.urgency_level === 'emergency' ? ["Seek immediate emergency care!"] : ["Worsening of current symptoms", "Development of new severe symptoms", "If symptoms do not improve as expected"],
                     severity: data.urgency_level,
-                    alternatives: [],
+                    alternatives: data.alternatives || [],
                     diseaseOptions: []
                 };
                 setAiMessages((prev) => [...prev, { role: "ai", type: "prediction", prediction }]);
@@ -1868,11 +1918,25 @@ export default function PatientDashboard() {
                                                     </div>
 
                                                     {!!msg.prediction.alternatives.length && (
-                                                        <div className="ai-pred-alt">
-                                                            <span className="ai-pred-alt-label">Other possibilities:</span>
-                                                            <span className="ai-pred-alt-value">
-                                                                {msg.prediction.alternatives.map((item) => `${item.disease} (${item.score})`).join(" · ")}
-                                                            </span>
+                                                        <div className="ai-pred-section" style={{ marginTop: '20px' }}>
+                                                            <div className="ai-pred-section-title" style={{ marginBottom: '12px', fontSize: '15px' }}>Top Possible Conditions</div>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                                {msg.prediction.alternatives.map((item, idx) => {
+                                                                    const colors = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+                                                                    const bgColors = ['#e0f2fe', '#dcfce7', '#fef3c7', '#fee2e2', '#ede9fe', '#fce7f3'];
+                                                                    const colorIdx = idx % colors.length;
+                                                                    const width = item.score; 
+                                                                    return (
+                                                                        <div key={item.disease} style={{ background: bgColors[colorIdx], borderRadius: '8px', padding: '10px 14px', position: 'relative', overflow: 'hidden' }}>
+                                                                            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: width, background: colors[colorIdx], opacity: 0.15 }} />
+                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+                                                                                <strong style={{ color: colors[colorIdx], fontSize: '14px', letterSpacing: '0.2px' }}>{item.disease}</strong>
+                                                                                <span style={{ fontWeight: 600, color: colors[colorIdx] }}>{item.score}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         </div>
                                                     )}
 
